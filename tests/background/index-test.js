@@ -26,6 +26,7 @@ describe('background/index', () => {
         getURL: sinon.stub(),
         requestUpdateCheck: sinon.stub().resolves(),
         onInstalled: eventListenerStub(),
+        onMessage: eventListenerStub(),
         onMessageExternal: eventListenerStub(),
         onUpdateAvailable: eventListenerStub(),
         setUninstallURL: sinon.stub().resolves(),

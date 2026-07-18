@@ -8,6 +8,11 @@ export type Settings = {
   apiUrl: string;
   buildType: string;
   serviceUrl: string;
+
+  /** Hypothesis group id that review annotations (incl. markers) land in. */
+  reviewGroup: string;
+  /** Bearer token used to POST the `review:send` marker to the local `h`. */
+  agentToken: string;
 };
 
 // nb. This will error if the build has not been run yet.

@@ -3,6 +3,7 @@ import { chromeAPI } from './chrome-api';
 import { directLinkQuery } from './direct-link-query';
 import * as errors from './errors';
 import { HelpPage } from './help-page';
+import { injectReviewButton, removeReviewButton } from './review-button';
 import settings from './settings';
 import { SidebarInjector } from './sidebar-injector';
 import { TabState } from './tab-state';
@@ -364,6 +365,9 @@ export class Extension {
 
           // Clear the direct link once H has been successfully injected.
           state.setState(tabId, { directLinkQuery: undefined });
+
+          // Mount the "Send to agent" drain button alongside the client.
+          await injectReviewButton(tabId);
         } catch (err: any) {
           if (err instanceof errors.AlreadyInjectedError) {
             state.setState(tabId, {
@@ -381,6 +385,7 @@ export class Extension {
         }
       } else if (state.isTabInactive(tabId) && isInstalled) {
         await sidebarInjector.removeFromTab(tab);
+        await removeReviewButton(tabId);
         state.setState(tabId, {
           extensionSidebarInstalled: false,
         });
