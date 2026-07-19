@@ -352,6 +352,10 @@ export class Extension {
           profileAppUrl: chromeAPI.runtime.getURL('/client/profile.html'),
           sidebarAppUrl: chromeAPI.runtime.getURL('/client/app.html'),
 
+          // Endpoint the sidebar posts PDF math-quote regions to for display-time
+          // OCR (see the client's AnnotationQuote). Omitted when unset.
+          ...(settings.ocrUrl ? { ocrUrl: settings.ocrUrl } : {}),
+
           // Pass the direct-link query as configuration into the client.
           //
           // The reason we don't rely on just putting this into the URL and letting

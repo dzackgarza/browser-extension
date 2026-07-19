@@ -13,6 +13,8 @@ export type Settings = {
   reviewGroup: string;
   /** Bearer token used to POST the `review:send` marker to the local `h`. */
   agentToken: string;
+  /** Endpoint that OCRs a PDF math quote's region at display time. Optional. */
+  ocrUrl?: string;
 };
 
 // nb. This will error if the build has not been run yet.
