@@ -2,61 +2,36 @@ import { executeFunction } from './chrome-api';
 import settings from './settings';
 
 /**
- * Message type sent from the injected button to the service worker to close a
- * review session (post the `review:send` drain marker). See the "Drain gesture"
- * and "Signal" sections of the hypothesis-review DESIGN.md.
+ * Message sent from the injected button to the service worker to close the
+ * active local review session.
  */
-export const REVIEW_SEND_MESSAGE = 'review:send';
+export const REVIEW_CLOSE_MESSAGE = 'review:close';
 
 /** ID of the host element that carries the button's isolated shadow root. */
 const HOST_ID = 'hypothesis-review-send-host';
 
 /**
- * Build the `h` API request that closes a review session by posting a
- * `review:send` marker annotation.
- *
- * Exported and pure so the URL/payload can be unit-tested. Note: `settings.apiUrl`
- * already includes the `/api` path segment (eg. `http://localhost:5000/api`), so
- * we strip it to recover the service origin and re-append `/api/annotations` to
- * hit the real endpoint rather than a doubled `/api/api/annotations`.
+ * Build the request to the loopback endpoint owned by `hypothesis-review`.
  */
-export function reviewAnnotationRequest(s: {
-  apiUrl: string;
-  reviewGroup: string;
-  agentToken: string;
-}) {
-  const origin = s.apiUrl.replace(/\/api\/?$/, '');
+export function reviewSessionRequest(s: { reviewSessionUrl: string }) {
   return {
-    url: `${origin}/api/annotations`,
-    headers: {
-      Authorization: `Bearer ${s.agentToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: {
-      uri: 'urn:annotate:marker',
-      group: s.reviewGroup,
-      text: 'review:send',
-      tags: ['review:send'],
-    },
+    url: s.reviewSessionUrl,
+    init: { method: 'POST' },
   };
 }
 
 /**
- * Post the drain marker to the local `h`. Runs in the service worker, which
- * (unlike a content script) is not restricted by the host page's CSP.
+ * Close the local review session. Runs in the service worker, which is not
+ * restricted by the host page's CSP.
  */
-async function sendReviewMarker(): Promise<{
+async function closeReviewSession(): Promise<{
   ok: boolean;
   status?: number;
   error?: string;
 }> {
-  const { url, headers, body } = reviewAnnotationRequest(settings);
+  const { url, init } = reviewSessionRequest(settings);
   try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-    });
+    const res = await fetch(url, init);
     return { ok: res.ok, status: res.status };
   } catch (err) {
     return { ok: false, error: String(err) };
@@ -73,10 +48,10 @@ export function handleReviewMessage(
   sender: chrome.runtime.MessageSender,
   sendResponse: (response: unknown) => void,
 ) {
-  if (message?.type !== REVIEW_SEND_MESSAGE) {
+  if (message?.type !== REVIEW_CLOSE_MESSAGE) {
     return undefined;
   }
-  sendReviewMarker().then(sendResponse);
+  closeReviewSession().then(sendResponse);
   return true;
 }
 
@@ -159,7 +134,7 @@ export async function injectReviewButton(tabId: number) {
     await executeFunction({
       tabId,
       func: mountReviewButton,
-      args: [HOST_ID, REVIEW_SEND_MESSAGE],
+      args: [HOST_ID, REVIEW_CLOSE_MESSAGE],
     });
   } catch (err) {
     console.warn('Failed to inject review button', err);

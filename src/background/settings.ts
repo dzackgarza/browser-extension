@@ -9,10 +9,8 @@ export type Settings = {
   buildType: string;
   serviceUrl: string;
 
-  /** Hypothesis group id that review annotations (incl. markers) land in. */
-  reviewGroup: string;
-  /** Bearer token used to POST the `review:send` marker to the local `h`. */
-  agentToken: string;
+  /** Loopback endpoint owned by hypothesis-review that closes an open session. */
+  reviewSessionUrl: string;
   /** Endpoint that OCRs a PDF math quote's region at display time. Optional. */
   ocrUrl?: string;
 };

@@ -10,7 +10,7 @@
 // background/review-button.ts -- this viewer bootstrap is raw JS and cannot import it.
 function mountReviewButton() {
   const HOST_ID = 'hypothesis-review-send-host';
-  const MESSAGE = 'review:send'; // must match REVIEW_SEND_MESSAGE in background/review-button.ts
+  const MESSAGE = 'review:close'; // must match REVIEW_CLOSE_MESSAGE in background/review-button.ts
   if (document.getElementById(HOST_ID)) {
     return;
   }
