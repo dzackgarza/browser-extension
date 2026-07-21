@@ -11,9 +11,14 @@
   "minimum_chrome_version": "88",
   {{/browserIsChrome}}
 
+  {{#browserIsChrome}}
   {{#key}}
   "key": "{{{ key }}}",
   {{/key}}
+  {{^key}}
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3Me1RsR0nhlr6+mlMo6Y6ZtDzAv+ia+Pgn4hfow1VuniV9tPs/2iskXaos54Z6pchfvmMAM4raIzVMFgaDMA4I7jL+eEqT0pMFJ3LR0+7wV8/oq74UaZfAh9HUHBttMNY+Fd+VcU74cvXizPJ4CWD72qgh04w+Pxa58P+cgd+tdce5SjphcjrwA1zIqq+KyB5LaVxmMdnIcOThF4fWaRZVZ5KmJhcmoBxzIkIk6lfIdXXs25XoaCmZRKDtz7RIl33NFz5GfSq/upTLu698YyCQ2E8l2u5FNlvyxrp1fjVtNs4ALbR9VvlfpX07YAqi8p3G9xk9BavrRrabuK7NT45QIDAQAB",
+  {{/key}}
+  {{/browserIsChrome}}
 
   {{#browserIsFirefox}}
   "applications": {
