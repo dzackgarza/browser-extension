@@ -399,7 +399,13 @@ export class Extension {
         }
       } else if (state.isTabInactive(tabId) && isInstalled) {
         await sidebarInjector.removeFromTab(tab);
-        await removeReviewButton(tabId);
+        // Mirror the injection path: the bundled PDF viewer owns its in-page
+        // control (chrome.scripting cannot target extension pages), so only
+        // ordinary tabs get the background removal.
+        const pdfViewerURL = chromeAPI.runtime.getURL('/pdfjs/web/viewer.html');
+        if (!tab.url?.startsWith(pdfViewerURL)) {
+          await removeReviewButton(tabId);
+        }
         state.setState(tabId, {
           extensionSidebarInstalled: false,
         });
