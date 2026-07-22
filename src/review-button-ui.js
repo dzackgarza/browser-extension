@@ -12,10 +12,12 @@ export const REVIEW_CLOSE_MESSAGE = 'review:close';
  *
  * @param {string} hostId
  * @param {string} messageType
+ * @returns {HTMLElement}
  */
 export function mountReviewButton(hostId, messageType) {
-  if (document.getElementById(hostId)) {
-    return;
+  const existingHost = document.getElementById(hostId);
+  if (existingHost) {
+    return existingHost;
   }
 
   const host = document.createElement('div');
@@ -90,6 +92,7 @@ export function mountReviewButton(hostId, messageType) {
   control.append(button, status);
   shadow.append(style, control);
   (document.body || document.documentElement).appendChild(host);
+  return host;
 }
 
 /**

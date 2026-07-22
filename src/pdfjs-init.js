@@ -47,7 +47,25 @@ async function init() {
 
   // The client is injected via <script> tags above; mount the drain button the same way,
   // in-page, now that the viewer and its DOM are ready.
-  mountReviewButton(REVIEW_BUTTON_HOST_ID, REVIEW_CLOSE_MESSAGE);
+  const reviewButtonHost = mountReviewButton(
+    REVIEW_BUTTON_HOST_ID,
+    REVIEW_CLOSE_MESSAGE,
+  );
+  const outerContainer = document.getElementById('outerContainer');
+  if (outerContainer) {
+    const placeReviewButton = () => {
+      reviewButtonHost.style.left = outerContainer.classList.contains(
+        'sidebarOpen',
+      )
+        ? 'calc(var(--sidebar-width) + 12px)'
+        : '12px';
+    };
+    new MutationObserver(placeReviewButton).observe(outerContainer, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+    placeReviewButton();
+  }
 }
 
 init();
