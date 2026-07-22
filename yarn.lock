@@ -6117,7 +6117,7 @@ __metadata:
     git-describe: ^4.1.1
     globals: ^16.5.0
     gulp: ^5.0.1
-    hypothesis: "portal:../client"
+    hypothesis: "dzackgarza/client#commit=cd16bb25c36e51321309b48022a129b29f406a53"
     is-equal-shallow: ^0.1.3
     mustache: ^4.2.0
     playwright: ^1.57.0
@@ -6131,13 +6131,14 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"hypothesis@portal:../client::locator=hypothesis-browser-extension%40workspace%3A.":
-  version: 0.0.0-use.local
-  resolution: "hypothesis@portal:../client::locator=hypothesis-browser-extension%40workspace%3A."
+"hypothesis@dzackgarza/client#commit=cd16bb25c36e51321309b48022a129b29f406a53":
+  version: 1.0.0-dummy-version
+  resolution: "hypothesis@https://github.com/dzackgarza/client.git#commit=cd16bb25c36e51321309b48022a129b29f406a53"
   dependencies:
     mathjax-full: ^3.2.2
+  checksum: e3ff5c1e17549cd9007a99d330d311b9e9cec499c8238e817d5b7088f269167e837a3bac8390b4b0abd885015daaa949c63bec5d76a7cf1ba70fb00dcce941e5
   languageName: node
-  linkType: soft
+  linkType: hard
 
 "iconv-lite@npm:0.6.3, iconv-lite@npm:^0.6.2, iconv-lite@npm:^0.6.3":
   version: 0.6.3
