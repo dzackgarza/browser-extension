@@ -37,9 +37,10 @@ test-commit:
 test-push: test-commit
     yarn test
 
-# CI-tier QC: push tier plus a production build.
+# CI-tier QC: push tier plus the build-settings gate and a production build.
 test-ci: test-push
-    make build
+    make checkbuild
+    make build SETTINGS_FILE={{settings}}
 
 [private]
 _test-review-button:

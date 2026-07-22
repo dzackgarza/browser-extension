@@ -17,6 +17,7 @@ help:
 	@echo "make checkformatting   Check code formatting"
 	@echo "make format            Automatically format code"
 	@echo "make test              Run the unit tests once"
+	@echo "make checkbuild        Check the build refuses invalid deployment settings"
 	@echo "make sure              Make sure that the formatter, linter, tests, etc all pass"
 	@echo "make clean             Delete development artefacts (cached files, "
 	@echo "                       dependencies, etc)"
@@ -40,7 +41,7 @@ clean:
 # `SETTINGS_FILE` changed, but the output file is only updated if needed.
 .PHONY: force
 build/settings.json: force
-	tools/settings.js $(SETTINGS_FILE) > $@.tmp
+	tools/settings.js $(SETTINGS_FILE) > $@.tmp || (rm -f $@.tmp; exit 1)
 	rsync --checksum $@.tmp $@
 	rm $@.tmp
 
@@ -109,8 +110,14 @@ format: node_modules/.uptodate
 test: node_modules/.uptodate
 	yarn test
 
+# Drives the real `make build/manifest.json` to prove that a deployment without
+# an extension identity fails the build instead of borrowing someone else's.
+.PHONY: checkbuild
+checkbuild: node_modules/.uptodate
+	node tools/check-manifest-identity.js
+
 .PHONY: sure
-sure: checkformatting lint test
+sure: checkformatting lint test checkbuild
 
 node_modules/.uptodate: package.json yarn.lock
 	yarn install
