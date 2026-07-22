@@ -55,6 +55,7 @@ extension: build/client/notebook.html
 extension: build/client/profile.html
 extension: build/unload-client.js
 extension: build/pdfjs-init.js
+extension: build/review-button-ui.js
 extension: $(addprefix build/,$(EXTENSION_SRC))
 
 build/extension.bundle.js: src/background/*.ts rollup.config.js build/settings.json
@@ -79,6 +80,8 @@ build/client/profile.html: build/client/app.html
 build/unload-client.js: src/unload-client.js
 	cp $< $@
 build/pdfjs-%.js: src/pdfjs-%.js
+	cp $< $@
+build/review-button-ui.js: src/review-button-ui.js
 	cp $< $@
 build/pdfjs: src/vendor/pdfjs
 	cp -R $< $@

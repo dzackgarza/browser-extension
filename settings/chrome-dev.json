@@ -7,5 +7,6 @@
   "browserIsChrome": true,
   "appType": "chrome-extension",
   "reviewGroup": "",
-  "agentToken": ""
+  "agentToken": "",
+  "reviewSessionUrl": "http://127.0.0.1:8902/session/close"
 }
