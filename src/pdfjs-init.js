@@ -1,5 +1,11 @@
 /* global PDFViewerApplication */
 
+import {
+  mountReviewButton,
+  REVIEW_BUTTON_HOST_ID,
+  REVIEW_CLOSE_MESSAGE,
+} from './review-button-ui.js';
+
 // This script is run once PDF.js has loaded and it configures the viewer
 // and injects the Hypothesis client.
 
@@ -38,6 +44,28 @@ async function init() {
   const embedScript = document.createElement('script');
   embedScript.src = '/client/build/boot.js';
   document.body.appendChild(embedScript);
+
+  // The client is injected via <script> tags above; mount the drain button the same way,
+  // in-page, now that the viewer and its DOM are ready.
+  const reviewButtonHost = mountReviewButton(
+    REVIEW_BUTTON_HOST_ID,
+    REVIEW_CLOSE_MESSAGE,
+  );
+  const outerContainer = document.getElementById('outerContainer');
+  if (outerContainer) {
+    const placeReviewButton = () => {
+      reviewButtonHost.style.left = outerContainer.classList.contains(
+        'sidebarOpen',
+      )
+        ? 'calc(var(--sidebar-width) + 12px)'
+        : '12px';
+    };
+    new MutationObserver(placeReviewButton).observe(outerContainer, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+    placeReviewButton();
+  }
 }
 
 init();

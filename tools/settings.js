@@ -46,14 +46,43 @@ function getVersion(buildType) {
   return { version, versionName };
 }
 
+/**
+ * Chrome derives the extension ID from the manifest's `key`, and that ID
+ * decides which storage, service worker and API grants an installed build
+ * receives. Two deployments built with the same key are the same extension as
+ * far as the browser is concerned and collide on all identity-derived state,
+ * so every Chrome deployment must supply its own key explicitly. A missing or
+ * empty value is a configuration error and stops the build here rather than
+ * producing an installable artifact with a borrowed identity.
+ */
+function checkExtensionIdentity(settings, settingsPath) {
+  if (!settings.browserIsChrome) {
+    // Firefox manifests carry no `key`; identity comes from the signed XPI.
+    return;
+  }
+
+  const { key } = settings;
+  if (typeof key !== 'string' || key.length === 0) {
+    throw new Error(
+      `${settingsPath} does not set "key". Chrome builds must supply the ` +
+        'extension packaging public key, which determines the extension ID ' +
+        'and therefore the identity of the installed extension.',
+    );
+  }
+}
+
 if (process.argv.length !== 3) {
   console.error('Usage: %s <settings.json>', path.basename(process.argv[1]));
   process.exit(1);
 }
 
+const settingsPath = process.argv[2];
 const settings = JSON.parse(
-  fs.readFileSync(path.join(process.cwd(), process.argv[2])),
+  fs.readFileSync(path.join(process.cwd(), settingsPath)),
 );
+
+checkExtensionIdentity(settings, settingsPath);
+
 const settingsOut = {
   ...settings,
   ...getVersion(settings.buildType),

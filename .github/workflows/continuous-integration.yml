@@ -28,6 +28,8 @@ jobs:
       run: make lint
     - name: Test
       run: make test
+    - name: Check build settings
+      run: make checkbuild
     - name: Fetch git tags
       run: |
         # Fetch tags because `git describe` uses them and the output from `git describe`

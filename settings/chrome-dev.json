@@ -1,11 +1,13 @@
 {
   "buildType": "dev",
-
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvV7NNRuerOhclg24EFqkSZtgX8sA2M61PAZh/YoRp8f7zW4/4xj1Nti+VNCQH6S+PgH7Gt2jttoFVhl1MQ3VNPFPFXBL38xoRZbjxd/C7sh5bXSBOIKIhBnXreDWFnQuMlYYaF4dgUveiKjDbjwImf5axTnDCqnhNydHgk/BC2WVIMT65Q0QU+tm5rotxs+Z3GWYSewx0oVkePyzgQNLbYjmHDN+0aVmann8CwfZjfgKO9auc05UdUab0FUnvu7SkPFqcVXvIXy/VXB4hgDwAoknVJrHJEs4is3bXHe0XE5DVY9iRKytV/0m1Pr6s1FE/bQbA94HBet9czgE4VzqPwIDAQAB",
   "apiUrl": "http://localhost:5000/api/",
   "authDomain": "localhost",
   "bouncerUrl": "http://localhost:8000/",
   "serviceUrl": "http://localhost:5000/",
-
   "browserIsChrome": true,
-  "appType": "chrome-extension"
+  "appType": "chrome-extension",
+  "reviewGroup": "",
+  "agentToken": "",
+  "reviewSessionUrl": "http://127.0.0.1:8902/session/close"
 }

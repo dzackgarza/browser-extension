@@ -1,6 +1,7 @@
 import { chromeAPI } from './chrome-api';
 import { Extension } from './extension';
 import type { ExternalMessage } from './messages';
+import { registerReviewMessageListener } from './review-button';
 
 /**
  * Link to survey to show users after extension is uninstalled.
@@ -18,6 +19,10 @@ export const uninstallURL =
 export async function init() {
   const extension = new Extension();
   const initialized = extension.init();
+
+  // Handle "Send to agent" clicks from the injected button (network call must
+  // run in the worker, which is not restricted by the host page's CSP).
+  registerReviewMessageListener(chromeAPI.runtime.onMessage);
 
   // Tokens indicating which features the current extension supports.
   const allFeatures = [

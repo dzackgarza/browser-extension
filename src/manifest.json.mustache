@@ -11,9 +11,11 @@
   "minimum_chrome_version": "88",
   {{/browserIsChrome}}
 
-  {{#key}}
+  {{! `key` is required for Chrome builds and validated by tools/settings.js,
+      so this section has no absent-value branch. }}
+  {{#browserIsChrome}}
   "key": "{{{ key }}}",
-  {{/key}}
+  {{/browserIsChrome}}
 
   {{#browserIsFirefox}}
   "applications": {

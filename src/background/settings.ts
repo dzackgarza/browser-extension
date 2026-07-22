@@ -8,6 +8,11 @@ export type Settings = {
   apiUrl: string;
   buildType: string;
   serviceUrl: string;
+
+  /** Loopback endpoint owned by hypothesis-review that closes an open session. */
+  reviewSessionUrl: string;
+  /** Endpoint that OCRs a PDF math quote's region at display time. Optional. */
+  ocrUrl?: string;
 };
 
 // nb. This will error if the build has not been run yet.
