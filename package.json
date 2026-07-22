@@ -36,7 +36,7 @@
     "glob": "^11.0.2",
     "globals": "^16.5.0",
     "gulp": "^5.0.1",
-    "hypothesis": "https://github.com/dzackgarza/client/releases/download/client-fork-8fa9b0b/hypothesis-client-8fa9b0b.tgz",
+    "hypothesis": "https://github.com/dzackgarza/client/releases/download/client-fork-2aaa1ee/hypothesis-client-2aaa1ee.tgz",
     "is-equal-shallow": "^0.1.3",
     "mustache": "^4.2.0",
     "playwright": "^1.57.0",
