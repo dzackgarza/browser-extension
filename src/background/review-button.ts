@@ -65,30 +65,26 @@ export function handleReviewMessage(
 }
 
 /**
- * Inject the "Send to agent" button into a tab. A failure here must never break
- * the client-injection lifecycle, so errors are logged and swallowed.
+ * Inject the "Send to agent" button into a tab.
+ *
+ * Failures propagate to the caller: extension.ts reports them and puts the tab
+ * into the extension's errored state, so a page without the review control is
+ * never presented as having a working review workflow
+ * (hypothesis-review#7: no swallowed errors).
  */
 export async function injectReviewButton(tabId: number) {
-  try {
-    await executeFunction({
-      tabId,
-      func: mountReviewButton,
-      args: [REVIEW_BUTTON_HOST_ID, REVIEW_CLOSE_MESSAGE],
-    });
-  } catch (err) {
-    console.warn('Failed to inject review button', err);
-  }
+  await executeFunction({
+    tabId,
+    func: mountReviewButton,
+    args: [REVIEW_BUTTON_HOST_ID, REVIEW_CLOSE_MESSAGE],
+  });
 }
 
-/** Remove the "Send to agent" button from a tab. */
+/** Remove the "Send to agent" button from a tab. Failures propagate. */
 export async function removeReviewButton(tabId: number) {
-  try {
-    await executeFunction({
-      tabId,
-      func: unmountReviewButton,
-      args: [REVIEW_BUTTON_HOST_ID],
-    });
-  } catch (err) {
-    console.warn('Failed to remove review button', err);
-  }
+  await executeFunction({
+    tabId,
+    func: unmountReviewButton,
+    args: [REVIEW_BUTTON_HOST_ID],
+  });
 }
