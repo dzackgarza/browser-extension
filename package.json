@@ -33,6 +33,7 @@
     "eslint": "^9.39.1",
     "eslint-config-hypothesis": "^3.3.1",
     "git-describe": "^4.1.1",
+    "glob": "^11.0.2",
     "globals": "^16.5.0",
     "gulp": "^5.0.1",
     "hypothesis": "dzackgarza/client#commit=8fa9b0bb9d55120b6845a07ef370f138dfa1c386",
@@ -53,7 +54,7 @@
     "test": "gulp test",
     "typecheck": "tsc --build src/tsconfig.json"
   },
-  "packageManager": "yarn@3.6.1",
+  "packageManager": "yarn@4.17.1",
   "dependenciesMeta": {
     "hypothesis": {
       "built": false
