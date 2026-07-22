@@ -4,13 +4,6 @@
 # settings/custom.json; a plain `make build` uses chrome-dev.json and ships an empty
 # Send config, so every build here pins custom.json.
 
-ai_review_ci_schema_version := "1"
-ai_review_ci_profile := "bun"
-ai_review_ci_ref := "main"
-ai_review_ci_release_channel := "main"
-ai_review_ci_workflow_template_version := "1"
-ai_review_ci_local_delegation := "global-justfile"
-ai_review_ci_default_branch := "main"
 settings := "settings/custom.json"
 
 # List available recipes.
@@ -33,17 +26,20 @@ check:
 format:
     make format
 
-# Run commit-tier Bun/TypeScript QC through the central implementation.
+# Commit-tier QC: formatting, lint, and types via upstream's native tooling.
+# This extension is an upstream hypothesis/browser-extension fork and keeps native QC;
+# the ai-review-ci language gates do not apply (user decision; see the h/client forks).
 test-commit:
-    @just -f ~/ai-review-ci/justfiles/bun.just -d . test-commit
+    make checkformatting
+    make lint
 
-# Run the full Bun test suite before pushing.
-test-push:
-    @just -f ~/ai-review-ci/justfiles/bun.just -d . test-push
+# Push-tier QC: commit tier plus the full test suite.
+test-push: test-commit
+    yarn test
 
-# Run CI acceptance QC through the central implementation.
-test-ci:
-    @just -f ~/ai-review-ci/justfiles/bun.just -d . test-ci
+# CI-tier QC: push tier plus a production build.
+test-ci: test-push
+    make build
 
 [private]
 _test-review-button:
