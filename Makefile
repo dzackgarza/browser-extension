@@ -56,7 +56,8 @@ extension: build/client/notebook.html
 extension: build/client/profile.html
 extension: build/unload-client.js
 extension: build/pdfjs-init.js
-extension: build/review-button-ui.js
+extension: build/review-bridge.js
+extension: build/review-events.js
 extension: $(addprefix build/,$(EXTENSION_SRC))
 
 build/extension.bundle.js: src/background/*.ts rollup.config.js build/settings.json
@@ -82,7 +83,11 @@ build/unload-client.js: src/unload-client.js
 	cp $< $@
 build/pdfjs-%.js: src/pdfjs-%.js
 	cp $< $@
-build/review-button-ui.js: src/review-button-ui.js
+# pdfjs-init.js is shipped unbundled and imports these at runtime, so they are copied
+# beside it rather than rolled up.
+build/review-bridge.js: src/review-bridge.js
+	cp $< $@
+build/review-events.js: src/review-events.js
 	cp $< $@
 build/pdfjs: src/vendor/pdfjs
 	cp -R $< $@
