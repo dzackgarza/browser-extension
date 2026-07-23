@@ -1,13 +1,20 @@
 import { executeFunction } from './chrome-api';
+import { mountReviewBridge, unmountReviewBridge } from '../review-bridge';
 import {
-  mountReviewButton,
-  REVIEW_BUTTON_HOST_ID,
-  REVIEW_CLOSE_MESSAGE,
-  unmountReviewButton,
-} from '../review-button-ui';
+  BRIDGE_GONE_EVENT,
+  BRIDGE_READY_EVENT,
+  RESULT_EVENT,
+  SEND_EVENT,
+  STATUS_EVENT,
+  STATUS_REQUEST_EVENT,
+} from '../review-events';
 import settings from './settings';
 
-export { REVIEW_CLOSE_MESSAGE };
+/** Message sent to the service worker to close the active review session. */
+export const REVIEW_CLOSE_MESSAGE = 'review:close';
+
+/** Message sent to the service worker to read the active session's status. */
+export const REVIEW_STATUS_MESSAGE = 'review:status';
 
 /**
  * A value reached the runtime message bus without the envelope every sender is
@@ -17,8 +24,10 @@ export { REVIEW_CLOSE_MESSAGE };
  */
 export class MalformedMessageError extends Error {}
 
-/** The only message contract this module handles. */
-type ReviewCloseMessage = { type: typeof REVIEW_CLOSE_MESSAGE };
+/** The message contracts this module handles. */
+type ReviewMessage = {
+  type: typeof REVIEW_CLOSE_MESSAGE | typeof REVIEW_STATUS_MESSAGE;
+};
 
 /**
  * The envelope shared by every message on `runtime.onMessage`. `type` is
@@ -60,12 +69,47 @@ function parseMessageEnvelope(message: unknown): MessageEnvelope {
  * message addressed to another handler on the shared bus, which this module
  * must leave for that handler to answer.
  */
-function parseReviewCloseMessage(message: unknown): ReviewCloseMessage | null {
+function parseReviewMessage(message: unknown): ReviewMessage | null {
   const { type } = parseMessageEnvelope(message);
-  if (type !== REVIEW_CLOSE_MESSAGE) {
+  if (type !== REVIEW_CLOSE_MESSAGE && type !== REVIEW_STATUS_MESSAGE) {
     return null;
   }
   return { type };
+}
+
+/**
+ * The status endpoint of the same loopback service the close URL names.
+ *
+ * Derived rather than configured separately: one service, one declared origin, two
+ * sibling paths. A second setting would be a second thing to get wrong.
+ */
+function statusUrl(): string {
+  return new URL('/session/status', settings.reviewSessionUrl).toString();
+}
+
+/**
+ * Read the open session's status: whether one is listening, and how much it would
+ * deliver if closed now.
+ *
+ * A service that is not running is not an error to report as a failure -- it is the
+ * normal state between review sessions, and the answer the toolbar needs in order to
+ * say so rather than offer a control that cannot work.
+ */
+async function readSessionStatus(): Promise<{
+  ok: boolean;
+  listening: boolean;
+  queued?: number;
+}> {
+  try {
+    const res = await fetch(statusUrl());
+    if (!res.ok) {
+      return { ok: false, listening: false };
+    }
+    const body = await res.json();
+    return { ok: true, listening: true, queued: body.queued };
+  } catch {
+    return { ok: true, listening: false };
+  }
 }
 
 /**
@@ -108,8 +152,13 @@ export function handleReviewMessage(
   sender: chrome.runtime.MessageSender,
   sendResponse: (response: unknown) => void,
 ): true | undefined {
-  if (parseReviewCloseMessage(message) === null) {
+  const parsed = parseReviewMessage(message);
+  if (parsed === null) {
     return undefined;
+  }
+  if (parsed.type === REVIEW_STATUS_MESSAGE) {
+    readSessionStatus().then(sendResponse);
+    return true;
   }
   closeReviewSession().then(sendResponse);
   return true;
@@ -131,26 +180,34 @@ export function registerReviewMessageListener(onMessage: MessageEvent) {
 }
 
 /**
- * Inject the "Send to agent" button into a tab.
+ * Inject the relay that lets the annotator toolbar reach the review service.
  *
- * Failures propagate to the caller: extension.ts reports them and puts the tab
- * into the extension's errored state, so a page without the review control is
- * never presented as having a working review workflow
- * (hypothesis-review#7: no swallowed errors).
+ * Failures propagate to the caller: extension.ts reports them and puts the tab into the
+ * extension's errored state, so a page whose toolbar cannot reach the review service is
+ * never presented as having a working review workflow (hypothesis-review#7: no swallowed
+ * errors).
  */
 export async function injectReviewButton(tabId: number) {
   await executeFunction({
     tabId,
-    func: mountReviewButton,
-    args: [REVIEW_BUTTON_HOST_ID, REVIEW_CLOSE_MESSAGE],
+    func: mountReviewBridge,
+    args: [
+      BRIDGE_READY_EVENT,
+      SEND_EVENT,
+      RESULT_EVENT,
+      STATUS_REQUEST_EVENT,
+      STATUS_EVENT,
+      REVIEW_CLOSE_MESSAGE,
+      REVIEW_STATUS_MESSAGE,
+    ],
   });
 }
 
-/** Remove the "Send to agent" button from a tab. Failures propagate. */
+/** Remove the relay from a tab, so the toolbar hides its control. Failures propagate. */
 export async function removeReviewButton(tabId: number) {
   await executeFunction({
     tabId,
-    func: unmountReviewButton,
-    args: [REVIEW_BUTTON_HOST_ID],
+    func: unmountReviewBridge,
+    args: [SEND_EVENT, STATUS_REQUEST_EVENT, BRIDGE_GONE_EVENT],
   });
 }

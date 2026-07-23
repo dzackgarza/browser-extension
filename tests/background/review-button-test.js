@@ -6,11 +6,15 @@ import {
   REVIEW_CLOSE_MESSAGE,
   $imports,
 } from '../../src/background/review-button';
+import { mountReviewBridge, unmountReviewBridge } from '../../src/review-bridge';
 import {
-  mountReviewButton,
-  REVIEW_BUTTON_HOST_ID,
-  unmountReviewButton,
-} from '../../src/review-button-ui';
+  BRIDGE_GONE_EVENT,
+  BRIDGE_READY_EVENT,
+  RESULT_EVENT,
+  SEND_EVENT,
+  STATUS_EVENT,
+  STATUS_REQUEST_EVENT,
+} from '../../src/review-events';
 import settings from '../../src/background/settings';
 
 describe('background/review-button', () => {
@@ -31,27 +35,38 @@ describe('background/review-button', () => {
   // to observe the arguments the module actually hands to it; the assertions
   // are about those arguments, not about the substitute.
   describe('the scripting boundary', () => {
-    it('mounts the review button in the requested tab', async () => {
+    it('mounts the review relay in the requested tab', async () => {
       await injectReviewButton(7);
 
       assert.calledOnce(fakeExecuteFunction);
       const options = fakeExecuteFunction.args[0][0];
       assert.equal(options.tabId, 7);
-      assert.equal(options.func, mountReviewButton);
+      assert.equal(options.func, mountReviewBridge);
+      // The relay is handed the whole event contract the toolbar listens on: it is
+      // serialized into the page, so anything it needs has to travel with it.
       assert.deepEqual(options.args, [
-        REVIEW_BUTTON_HOST_ID,
+        BRIDGE_READY_EVENT,
+        SEND_EVENT,
+        RESULT_EVENT,
+        STATUS_REQUEST_EVENT,
+        STATUS_EVENT,
         REVIEW_CLOSE_MESSAGE,
+        'review:status',
       ]);
     });
 
-    it('unmounts the review button from the requested tab', async () => {
+    it('unmounts the review relay from the requested tab', async () => {
       await removeReviewButton(9);
 
       assert.calledOnce(fakeExecuteFunction);
       const options = fakeExecuteFunction.args[0][0];
       assert.equal(options.tabId, 9);
-      assert.equal(options.func, unmountReviewButton);
-      assert.deepEqual(options.args, [REVIEW_BUTTON_HOST_ID]);
+      assert.equal(options.func, unmountReviewBridge);
+      assert.deepEqual(options.args, [
+        SEND_EVENT,
+        STATUS_REQUEST_EVENT,
+        BRIDGE_GONE_EVENT,
+      ]);
     });
 
     // hypothesis-review#7: a failed injection must surface to the caller (which

@@ -1,10 +1,13 @@
 /* global PDFViewerApplication */
 
+import { mountReviewBridge } from './review-bridge.js';
 import {
-  mountReviewButton,
-  REVIEW_BUTTON_HOST_ID,
-  REVIEW_CLOSE_MESSAGE,
-} from './review-button-ui.js';
+  BRIDGE_READY_EVENT,
+  RESULT_EVENT,
+  SEND_EVENT,
+  STATUS_EVENT,
+  STATUS_REQUEST_EVENT,
+} from './review-events.js';
 
 // This script is run once PDF.js has loaded and it configures the viewer
 // and injects the Hypothesis client.
@@ -45,27 +48,20 @@ async function init() {
   embedScript.src = '/client/build/boot.js';
   document.body.appendChild(embedScript);
 
-  // The client is injected via <script> tags above; mount the drain button the same way,
-  // in-page, now that the viewer and its DOM are ready.
-  const reviewButtonHost = mountReviewButton(
-    REVIEW_BUTTON_HOST_ID,
-    REVIEW_CLOSE_MESSAGE,
+  // The client is injected via <script> tags above; mount the review relay the same way,
+  // in-page, now that the viewer and its DOM are ready. `chrome.scripting` cannot target
+  // this extension page, so the relay is mounted here rather than by the service worker --
+  // and the toolbar's control then works identically over a PDF and over a web page,
+  // instead of the viewer needing a floating button of its own.
+  mountReviewBridge(
+    BRIDGE_READY_EVENT,
+    SEND_EVENT,
+    RESULT_EVENT,
+    STATUS_REQUEST_EVENT,
+    STATUS_EVENT,
+    'review:close',
+    'review:status',
   );
-  const outerContainer = document.getElementById('outerContainer');
-  if (outerContainer) {
-    const placeReviewButton = () => {
-      reviewButtonHost.style.left = outerContainer.classList.contains(
-        'sidebarOpen',
-      )
-        ? 'calc(var(--sidebar-width) + 12px)'
-        : '12px';
-    };
-    new MutationObserver(placeReviewButton).observe(outerContainer, {
-      attributes: true,
-      attributeFilter: ['class'],
-    });
-    placeReviewButton();
-  }
 }
 
 init();
