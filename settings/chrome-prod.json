@@ -8,6 +8,5 @@
   "oauthClientId": "fd23fe2e-7792-11e7-8e16-23e47a1799d4",
   "sentryPublicDSN": "https://934d4f62912b47d8bb03c28ae6670cf8@app.getsentry.com/69811",
   "browserIsChrome": true,
-  "appType": "chrome-extension",
-  "reviewSessionUrl": "http://127.0.0.1:8902/session/close"
+  "appType": "chrome-extension"
 }

@@ -1,8 +1,6 @@
 # Tasks for this Hypothesis extension fork. Use `just`, never `make` directly.
 #
-# The real Send-to-agent config (reviewGroup + agent token) lives in the gitignored
-# settings/custom.json; a plain `make build` uses chrome-dev.json and ships an empty
-# Send config, so every build here pins custom.json.
+# Local extension settings live in the gitignored settings/custom.json.
 
 settings := "settings/custom.json"
 
@@ -41,7 +39,3 @@ test-push: test-commit
 test-ci: test-push
     make checkbuild
     make build SETTINGS_FILE={{settings}}
-
-[private]
-_test-review-button:
-    yarn test --grep review-button-test

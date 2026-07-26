@@ -4,6 +4,5 @@
   "authDomain": "localhost",
   "serviceUrl": "http://localhost:5000/",
   "browserIsFirefox": true,
-  "appType": "firefox-extension",
-  "reviewSessionUrl": "http://127.0.0.1:8902/session/close"
+  "appType": "firefox-extension"
 }

@@ -9,10 +9,6 @@ export type Settings = {
   buildType: string;
   serviceUrl: string;
 
-  /** Hypothesis group whose annotations can enter the agent queue. */
-  reviewGroup: string;
-  /** Developer token used to update the queue tag through the h API. */
-  agentToken: string;
   /** Endpoint that OCRs a PDF math quote's region at display time. Optional. */
   ocrUrl?: string;
 };

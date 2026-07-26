@@ -3,7 +3,6 @@ import { chromeAPI } from './chrome-api';
 import { directLinkQuery } from './direct-link-query';
 import * as errors from './errors';
 import { HelpPage } from './help-page';
-import { injectReviewButton, removeReviewButton } from './review-button';
 import settings from './settings';
 import { SidebarInjector } from './sidebar-injector';
 import { TabState } from './tab-state';
@@ -369,19 +368,6 @@ export class Extension {
 
           // Clear the direct link once H has been successfully injected.
           state.setState(tabId, { directLinkQuery: undefined });
-
-          // Mount the "Send to agent" drain button alongside the client. The
-          // bundled PDF viewer mounts it in-page (pdfjs-init.js) because
-          // `chrome.scripting` cannot target the extension's own pages; for
-          // every other tab a failed injection propagates and marks the tab
-          // errored below, so a page without the review control is never
-          // presented as review-ready.
-          const pdfViewerURL = chromeAPI.runtime.getURL(
-            '/pdfjs/web/viewer.html',
-          );
-          if (!tab.url?.startsWith(pdfViewerURL)) {
-            await injectReviewButton(tabId);
-          }
         } catch (err: any) {
           if (err instanceof errors.AlreadyInjectedError) {
             state.setState(tabId, {
@@ -399,13 +385,6 @@ export class Extension {
         }
       } else if (state.isTabInactive(tabId) && isInstalled) {
         await sidebarInjector.removeFromTab(tab);
-        // Mirror the injection path: the bundled PDF viewer owns its in-page
-        // control (chrome.scripting cannot target extension pages), so only
-        // ordinary tabs get the background removal.
-        const pdfViewerURL = chromeAPI.runtime.getURL('/pdfjs/web/viewer.html');
-        if (!tab.url?.startsWith(pdfViewerURL)) {
-          await removeReviewButton(tabId);
-        }
         state.setState(tabId, {
           extensionSidebarInstalled: false,
         });

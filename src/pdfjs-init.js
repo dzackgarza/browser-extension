@@ -1,14 +1,5 @@
 /* global PDFViewerApplication */
 
-import { mountReviewBridge } from './review-bridge.js';
-import {
-  BRIDGE_READY_EVENT,
-  RESULT_EVENT,
-  STATUS_EVENT,
-  STATUS_REQUEST_EVENT,
-  TOGGLE_EVENT,
-} from './review-events.js';
-
 // This script is run once PDF.js has loaded and it configures the viewer
 // and injects the Hypothesis client.
 
@@ -47,21 +38,6 @@ async function init() {
   const embedScript = document.createElement('script');
   embedScript.src = '/client/build/boot.js';
   document.body.appendChild(embedScript);
-
-  // The client is injected via <script> tags above; mount the review relay the same way,
-  // in-page, now that the viewer and its DOM are ready. `chrome.scripting` cannot target
-  // this extension page, so the relay is mounted here rather than by the service worker --
-  // and the toolbar's control then works identically over a PDF and over a web page,
-  // instead of the viewer needing a floating button of its own.
-  mountReviewBridge(
-    BRIDGE_READY_EVENT,
-    TOGGLE_EVENT,
-    RESULT_EVENT,
-    STATUS_REQUEST_EVENT,
-    STATUS_EVENT,
-    'review:queue-toggle',
-    'review:queue-status',
-  );
 }
 
 init();

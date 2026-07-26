@@ -118,10 +118,6 @@ describe('Extension', () => {
       './sidebar-injector': {
         SidebarInjector: createConstructor(fakeSidebarInjector),
       },
-      './review-button': {
-        injectReviewButton: sinon.stub().resolves(),
-        removeReviewButton: sinon.stub().resolves(),
-      },
       './errors': fakeErrors,
       './settings': {
         default: {

@@ -6,8 +6,5 @@
   "bouncerUrl": "http://localhost:8000/",
   "serviceUrl": "http://localhost:5000/",
   "browserIsChrome": true,
-  "appType": "chrome-extension",
-  "reviewGroup": "",
-  "agentToken": "",
-  "reviewSessionUrl": "http://127.0.0.1:8902/session/close"
+  "appType": "chrome-extension"
 }

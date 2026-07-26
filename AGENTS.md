@@ -1,14 +1,11 @@
 # browser-extension (Hypothesis fork)
 
-Adds a persistent **Send to agent** queue toggle (`src/background/review-button.ts`,
-mounted on PDFs in `src/pdfjs-init.js`) and math-aware sidebar quotes (vendored client
-fork).
+Packages the client-owned **Send to agent** queue toggle and math-aware sidebar quotes.
 
-**Use `just`, never `make` directly.** `just build` pins `settings/custom.json` (the
-gitignored file that must define the real `reviewGroup` and `agentToken`); a plain
-`make build` uses `chrome-dev.json` and ships an unusable queue config.
+**Use `just`, never `make` directly.** `just build` pins the gitignored
+`settings/custom.json`; a plain `make build` uses `chrome-dev.json`.
 `just check` = eslint + tsc.
-`build/` and `settings/custom.json` are gitignored — the token is never committed.
+`build/` and `settings/custom.json` are gitignored.
 
 > Optimized tool-use workflow for agents: see [SDL.md](./SDL.md).
 
