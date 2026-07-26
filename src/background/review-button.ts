@@ -17,6 +17,7 @@ const AGENT_QUEUE = 'agent:queue';
 const ACTED = 'acted';
 const QUEUE_ENABLED_KEY = 'agentQueueEnabled';
 const PAGE_SIZE = 100;
+const API_ROOT = settings.apiUrl.replace(/\/+$/, '');
 
 export class MalformedMessageError extends Error {}
 
@@ -108,7 +109,7 @@ export async function annotations(): Promise<ApiAnnotation[]> {
   let total = 1;
   while (found.length < total) {
     const group = encodeURIComponent(settings.reviewGroup);
-    const url = new URL(`${settings.apiUrl}/groups/${group}/annotations`);
+    const url = new URL(`${API_ROOT}/groups/${group}/annotations`);
     url.searchParams.set('page[size]', String(PAGE_SIZE));
     if (after !== undefined) {
       url.searchParams.set('page[after]', after);
@@ -151,7 +152,7 @@ export async function annotations(): Promise<ApiAnnotation[]> {
 
 async function replaceTags(annotation: ApiAnnotation, tags: string[]) {
   const response = await fetch(
-    `${settings.apiUrl}/annotations/${encodeURIComponent(annotation.id)}`,
+    `${API_ROOT}/annotations/${encodeURIComponent(annotation.id)}`,
     {
       method: 'PATCH',
       headers: {
