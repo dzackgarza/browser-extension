@@ -16,7 +16,7 @@ export const REVIEW_STATUS_MESSAGE = 'review:queue-status';
 const AGENT_QUEUE = 'agent:queue';
 const ACTED = 'acted';
 const QUEUE_ENABLED_KEY = 'agentQueueEnabled';
-const SEARCH_PAGE_SIZE = 200;
+const PAGE_SIZE = 100;
 
 export class MalformedMessageError extends Error {}
 
@@ -28,6 +28,7 @@ type MessageEnvelope = { type: string };
 
 type ApiAnnotation = {
   id: string;
+  created: string;
   tags: string[];
 };
 
@@ -66,7 +67,12 @@ function parseReviewMessage(message: unknown): ReviewMessage | null {
 }
 
 function authorizationHeaders(): HeadersInit {
-  if (settings.reviewGroup === '' || settings.agentToken === '') {
+  if (
+    typeof settings.reviewGroup !== 'string' ||
+    settings.reviewGroup === '' ||
+    typeof settings.agentToken !== 'string' ||
+    settings.agentToken === ''
+  ) {
     throw new Error(
       'The extension build has no reviewGroup or agentToken; rebuild it from settings/custom.json.',
     );
@@ -79,7 +85,10 @@ function parseAnnotation(value: unknown): ApiAnnotation {
     throw new Error('h search returned a non-object annotation.');
   }
   if (!('id' in value) || typeof value.id !== 'string') {
-    throw new Error('h search returned an annotation without a string id.');
+    throw new Error('h returned an annotation without a string id.');
+  }
+  if (!('created' in value) || typeof value.created !== 'string') {
+    throw new Error(`h returned malformed created time for ${value.id}.`);
   }
   if (
     !('tags' in value) ||
@@ -87,46 +96,55 @@ function parseAnnotation(value: unknown): ApiAnnotation {
     !value.tags.every(tag => typeof tag === 'string')
   ) {
     throw new Error(
-      `h search returned malformed tags for annotation ${value.id}.`,
+      `h returned malformed tags for annotation ${value.id}.`,
     );
   }
-  return { id: value.id, tags: value.tags };
+  return { id: value.id, created: value.created, tags: value.tags };
 }
 
-async function annotations(): Promise<ApiAnnotation[]> {
+export async function annotations(): Promise<ApiAnnotation[]> {
   const found: ApiAnnotation[] = [];
-  let offset = 0;
+  let after: string | undefined;
   let total = 1;
-  while (offset < total) {
-    const url = new URL(`${settings.apiUrl}/search`);
-    url.searchParams.set('group', settings.reviewGroup);
-    url.searchParams.set('limit', String(SEARCH_PAGE_SIZE));
-    url.searchParams.set('offset', String(offset));
+  while (found.length < total) {
+    const group = encodeURIComponent(settings.reviewGroup);
+    const url = new URL(`${settings.apiUrl}/groups/${group}/annotations`);
+    url.searchParams.set('page[size]', String(PAGE_SIZE));
+    if (after !== undefined) {
+      url.searchParams.set('page[after]', after);
+    }
     const response = await fetch(url, { headers: authorizationHeaders() });
     if (!response.ok) {
       throw new Error(
-        `h search rejected the queue read (HTTP ${response.status}).`,
+        `h rejected the complete group queue read (HTTP ${response.status}).`,
       );
     }
     const body: unknown = await response.json();
     if (
       typeof body !== 'object' ||
       body === null ||
-      !('rows' in body) ||
-      !Array.isArray(body.rows) ||
-      !('total' in body) ||
-      typeof body.total !== 'number'
+      !('data' in body) ||
+      !Array.isArray(body.data) ||
+      !('meta' in body) ||
+      typeof body.meta !== 'object' ||
+      body.meta === null ||
+      !('page' in body.meta) ||
+      typeof body.meta.page !== 'object' ||
+      body.meta.page === null ||
+      !('total' in body.meta.page) ||
+      typeof body.meta.page.total !== 'number'
     ) {
-      throw new Error('h search returned a malformed queue page.');
+      throw new Error('h returned a malformed group annotation page.');
     }
-    found.push(...body.rows.map(parseAnnotation));
-    total = body.total;
-    offset += body.rows.length;
-    if (body.rows.length === 0 && offset < total) {
+    const page = body.data.map(parseAnnotation);
+    found.push(...page);
+    total = body.meta.page.total;
+    if (page.length === 0 && found.length < total) {
       throw new Error(
-        'h search returned an empty page before its declared total.',
+        'h returned an empty group annotation page before its declared total.',
       );
     }
+    after = page[page.length - 1]?.created;
   }
   return found;
 }
@@ -155,7 +173,7 @@ async function queueEnabled(): Promise<boolean> {
   return stored[QUEUE_ENABLED_KEY] === true;
 }
 
-async function reconcile(enabled: boolean): Promise<number> {
+export async function reconcile(enabled: boolean): Promise<number> {
   const rows = await annotations();
   for (const annotation of rows) {
     const shouldQueue = enabled && !annotation.tags.includes(ACTED);

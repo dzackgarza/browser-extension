@@ -1,6 +1,8 @@
 import {
+  annotations,
   injectReviewButton,
   MalformedMessageError,
+  reconcile,
   registerReviewMessageListener,
   removeReviewButton,
   REVIEW_STATUS_MESSAGE,
@@ -97,6 +99,79 @@ describe('background/review-button', () => {
 
       assert.isUndefined(deliver({ type: 'getConfigForTab' }, sendResponse));
       assert.notCalled(sendResponse);
+    });
+  });
+
+  describe('the complete group queue', () => {
+    let fetchStub;
+
+    beforeEach(() => {
+      fetchStub = sinon.stub(globalThis, 'fetch');
+    });
+
+    afterEach(() => {
+      fetchStub.restore();
+    });
+
+    function response(body, status = 200) {
+      return {
+        ok: status >= 200 && status < 300,
+        status,
+        json: sinon.stub().resolves(body),
+      };
+    }
+
+    it('reads every annotation through the Postgres-backed group endpoint', async () => {
+      const first = Array.from({ length: 100 }, (_, index) => ({
+        id: `annotation-${index}`,
+        created: `2026-07-26T00:00:${String(99 - index).padStart(2, '0')}Z`,
+        tags: [],
+      }));
+      const last = {
+        id: 'annotation-100',
+        created: '2026-07-25T23:59:59Z',
+        tags: [],
+      };
+      fetchStub.onFirstCall().resolves(
+        response({ meta: { page: { total: 101 } }, data: first }),
+      );
+      fetchStub.onSecondCall().resolves(
+        response({ meta: { page: { total: 101 } }, data: [last] }),
+      );
+
+      assert.lengthOf(await annotations(), 101);
+      assert.match(fetchStub.firstCall.args[0].pathname, /\/groups\/.+\/annotations$/);
+      assert.equal(
+        fetchStub.secondCall.args[0].searchParams.get('page[after]'),
+        first.at(-1).created,
+      );
+    });
+
+    it('flags unacted annotations and preserves all existing tags', async () => {
+      fetchStub.onFirstCall().resolves(
+        response({
+          meta: { page: { total: 2 } },
+          data: [
+            {
+              id: 'queued',
+              created: '2026-07-26T00:00:02Z',
+              tags: ['important'],
+            },
+            {
+              id: 'done',
+              created: '2026-07-26T00:00:01Z',
+              tags: ['acted', 'important'],
+            },
+          ],
+        }),
+      );
+      fetchStub.onSecondCall().resolves(response({}));
+
+      assert.equal(await reconcile(true), 1);
+      assert.equal(fetchStub.callCount, 2);
+      assert.deepEqual(JSON.parse(fetchStub.secondCall.args[1].body), {
+        tags: ['important', 'agent:queue'],
+      });
     });
   });
 });
