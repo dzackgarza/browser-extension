@@ -4,9 +4,9 @@ import { mountReviewBridge } from './review-bridge.js';
 import {
   BRIDGE_READY_EVENT,
   RESULT_EVENT,
-  SEND_EVENT,
   STATUS_EVENT,
   STATUS_REQUEST_EVENT,
+  TOGGLE_EVENT,
 } from './review-events.js';
 
 // This script is run once PDF.js has loaded and it configures the viewer
@@ -55,12 +55,12 @@ async function init() {
   // instead of the viewer needing a floating button of its own.
   mountReviewBridge(
     BRIDGE_READY_EVENT,
-    SEND_EVENT,
+    TOGGLE_EVENT,
     RESULT_EVENT,
     STATUS_REQUEST_EVENT,
     STATUS_EVENT,
-    'review:close',
-    'review:status',
+    'review:queue-toggle',
+    'review:queue-status',
   );
 }
 

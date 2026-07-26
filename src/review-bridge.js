@@ -1,7 +1,7 @@
 /**
  * Relay between the page's annotator toolbar and the review service worker.
  *
- * The "Send to agent" control belongs in the toolbar beside the app's other buttons, and
+ * The agent-queue control belongs in the toolbar beside the app's other buttons, and
  * the toolbar is the client's, rendered in the page. A page cannot reach the loopback
  * review service -- its CSP forbids it, and the service is not a web origin the page is
  * allowed to see -- but the service worker can. So the button asks by dispatching a DOM
@@ -15,20 +15,20 @@
  * its constants as arguments.
  *
  * @param {string} readyEvent
- * @param {string} sendEvent
+ * @param {string} toggleEvent
  * @param {string} resultEvent
  * @param {string} statusRequestEvent
  * @param {string} statusEvent
- * @param {string} sendMessage
+ * @param {string} toggleMessage
  * @param {string} statusMessage
  */
 export function mountReviewBridge(
   readyEvent,
-  sendEvent,
+  toggleEvent,
   resultEvent,
   statusRequestEvent,
   statusEvent,
-  sendMessage,
+  toggleMessage,
   statusMessage,
 ) {
   // The page is not ours and its `window` is untyped from here, so the handle the
@@ -60,12 +60,12 @@ export function mountReviewBridge(
     window.dispatchEvent(new CustomEvent(replyEvent, { detail }));
   };
 
-  const onSend = () => relay(sendMessage, resultEvent);
+  const onToggle = () => relay(toggleMessage, resultEvent);
   const onStatusRequest = () => relay(statusMessage, statusEvent);
 
-  window.addEventListener(sendEvent, onSend);
+  window.addEventListener(toggleEvent, onToggle);
   window.addEventListener(statusRequestEvent, onStatusRequest);
-  global.__hypothesisReviewBridge = { onSend, onStatusRequest };
+  global.__hypothesisReviewBridge = { onToggle, onStatusRequest };
 
   // Announced after the listeners are attached, so a toolbar that reacts by asking for
   // status immediately is answered rather than ignored.
@@ -75,17 +75,21 @@ export function mountReviewBridge(
 /**
  * Remove the relay. The toolbar sees no further status and hides its control.
  *
- * @param {string} sendEvent
+ * @param {string} toggleEvent
  * @param {string} statusRequestEvent
  * @param {string} goneEvent
  */
-export function unmountReviewBridge(sendEvent, statusRequestEvent, goneEvent) {
+export function unmountReviewBridge(
+  toggleEvent,
+  statusRequestEvent,
+  goneEvent,
+) {
   const global = /** @type {any} */ (window);
   const bridge = global.__hypothesisReviewBridge;
   if (!bridge) {
     return;
   }
-  window.removeEventListener(sendEvent, bridge.onSend);
+  window.removeEventListener(toggleEvent, bridge.onToggle);
   window.removeEventListener(statusRequestEvent, bridge.onStatusRequest);
   delete global.__hypothesisReviewBridge;
   window.dispatchEvent(new CustomEvent(goneEvent));

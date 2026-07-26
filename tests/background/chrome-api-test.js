@@ -55,6 +55,10 @@ describe('chrome-api', () => {
           sync: {
             get: sinon.stub(),
           },
+          local: {
+            get: sinon.stub(),
+            set: sinon.stub(),
+          },
         },
       };
     });

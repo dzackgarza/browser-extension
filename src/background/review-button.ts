@@ -1,47 +1,42 @@
-import { executeFunction } from './chrome-api';
+import { chromeAPI, executeFunction } from './chrome-api';
 import { mountReviewBridge, unmountReviewBridge } from '../review-bridge';
 import {
   BRIDGE_GONE_EVENT,
   BRIDGE_READY_EVENT,
   RESULT_EVENT,
-  SEND_EVENT,
   STATUS_EVENT,
   STATUS_REQUEST_EVENT,
+  TOGGLE_EVENT,
 } from '../review-events';
 import settings from './settings';
 
-/** Message sent to the service worker to close the active review session. */
-export const REVIEW_CLOSE_MESSAGE = 'review:close';
+export const REVIEW_TOGGLE_MESSAGE = 'review:queue-toggle';
+export const REVIEW_STATUS_MESSAGE = 'review:queue-status';
 
-/** Message sent to the service worker to read the active session's status. */
-export const REVIEW_STATUS_MESSAGE = 'review:status';
+const AGENT_QUEUE = 'agent:queue';
+const ACTED = 'acted';
+const QUEUE_ENABLED_KEY = 'agentQueueEnabled';
+const SEARCH_PAGE_SIZE = 200;
 
-/**
- * A value reached the runtime message bus without the envelope every sender is
- * required to use. Nothing on the bus can route it, so it is thrown rather
- * than ignored: the service worker reports it instead of leaving the sender to
- * believe its request was accepted.
- */
 export class MalformedMessageError extends Error {}
 
-/** The message contracts this module handles. */
 type ReviewMessage = {
-  type: typeof REVIEW_CLOSE_MESSAGE | typeof REVIEW_STATUS_MESSAGE;
+  type: typeof REVIEW_TOGGLE_MESSAGE | typeof REVIEW_STATUS_MESSAGE;
 };
 
-/**
- * The envelope shared by every message on `runtime.onMessage`. `type` is
- * required: it is what decides which handler owns the message.
- */
 type MessageEnvelope = { type: string };
 
-/**
- * Validate the envelope of a value that arrived from outside this module, and
- * outside the extension's own compiled code.
- *
- * The returned value is built out of what was checked, so its static type is
- * produced by the validation rather than asserted alongside it.
- */
+type ApiAnnotation = {
+  id: string;
+  tags: string[];
+};
+
+type QueueStatus = {
+  ok: true;
+  enabled: boolean;
+  queued: number;
+};
+
 function parseMessageEnvelope(message: unknown): MessageEnvelope {
   if (typeof message !== 'object' || message === null) {
     throw new MalformedMessageError(
@@ -62,91 +57,136 @@ function parseMessageEnvelope(message: unknown): MessageEnvelope {
   return { type };
 }
 
-/**
- * Validate a message against this module's contract.
- *
- * Throws if the message is malformed. Returns `null` if it is a well-formed
- * message addressed to another handler on the shared bus, which this module
- * must leave for that handler to answer.
- */
 function parseReviewMessage(message: unknown): ReviewMessage | null {
   const { type } = parseMessageEnvelope(message);
-  if (type !== REVIEW_CLOSE_MESSAGE && type !== REVIEW_STATUS_MESSAGE) {
+  if (type !== REVIEW_TOGGLE_MESSAGE && type !== REVIEW_STATUS_MESSAGE) {
     return null;
   }
   return { type };
 }
 
-/**
- * The status endpoint of the same loopback service the close URL names.
- *
- * Derived rather than configured separately: one service, one declared origin, two
- * sibling paths. A second setting would be a second thing to get wrong.
- */
-function statusUrl(): string {
-  return new URL('/session/status', settings.reviewSessionUrl).toString();
+function authorizationHeaders(): HeadersInit {
+  if (settings.reviewGroup === '' || settings.agentToken === '') {
+    throw new Error(
+      'The extension build has no reviewGroup or agentToken; rebuild it from settings/custom.json.',
+    );
+  }
+  return { Authorization: `Bearer ${settings.agentToken}` };
 }
 
-/**
- * Read the open session's status: whether one is listening, and how much it would
- * deliver if closed now.
- *
- * A service that is not running is not an error to report as a failure -- it is the
- * normal state between review sessions, and the answer the toolbar needs in order to
- * say so rather than offer a control that cannot work.
- */
-async function readSessionStatus(): Promise<{
-  ok: boolean;
-  listening: boolean;
-  queued?: number;
-}> {
-  try {
-    const res = await fetch(statusUrl());
-    if (!res.ok) {
-      return { ok: false, listening: false };
+function parseAnnotation(value: unknown): ApiAnnotation {
+  if (typeof value !== 'object' || value === null) {
+    throw new Error('h search returned a non-object annotation.');
+  }
+  if (!('id' in value) || typeof value.id !== 'string') {
+    throw new Error('h search returned an annotation without a string id.');
+  }
+  if (
+    !('tags' in value) ||
+    !Array.isArray(value.tags) ||
+    !value.tags.every(tag => typeof tag === 'string')
+  ) {
+    throw new Error(
+      `h search returned malformed tags for annotation ${value.id}.`,
+    );
+  }
+  return { id: value.id, tags: value.tags };
+}
+
+async function annotations(): Promise<ApiAnnotation[]> {
+  const found: ApiAnnotation[] = [];
+  let offset = 0;
+  let total = 1;
+  while (offset < total) {
+    const url = new URL(`${settings.apiUrl}/search`);
+    url.searchParams.set('group', settings.reviewGroup);
+    url.searchParams.set('limit', String(SEARCH_PAGE_SIZE));
+    url.searchParams.set('offset', String(offset));
+    const response = await fetch(url, { headers: authorizationHeaders() });
+    if (!response.ok) {
+      throw new Error(
+        `h search rejected the queue read (HTTP ${response.status}).`,
+      );
     }
-    const body = await res.json();
-    return { ok: true, listening: true, queued: body.queued };
-  } catch {
-    return { ok: true, listening: false };
+    const body: unknown = await response.json();
+    if (
+      typeof body !== 'object' ||
+      body === null ||
+      !('rows' in body) ||
+      !Array.isArray(body.rows) ||
+      !('total' in body) ||
+      typeof body.total !== 'number'
+    ) {
+      throw new Error('h search returned a malformed queue page.');
+    }
+    found.push(...body.rows.map(parseAnnotation));
+    total = body.total;
+    offset += body.rows.length;
+    if (body.rows.length === 0 && offset < total) {
+      throw new Error(
+        'h search returned an empty page before its declared total.',
+      );
+    }
+  }
+  return found;
+}
+
+async function replaceTags(annotation: ApiAnnotation, tags: string[]) {
+  const response = await fetch(
+    `${settings.apiUrl}/annotations/${encodeURIComponent(annotation.id)}`,
+    {
+      method: 'PATCH',
+      headers: {
+        ...authorizationHeaders(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ tags }),
+    },
+  );
+  if (!response.ok) {
+    throw new Error(
+      `h rejected the queue update for ${annotation.id} (HTTP ${response.status}).`,
+    );
   }
 }
 
-/**
- * Close the local review session. Runs in the service worker, which is not
- * restricted by the host page's CSP.
- */
-async function closeReviewSession(): Promise<{
-  ok: boolean;
-  status?: number;
-  error?: string;
-}> {
-  try {
-    const res = await fetch(settings.reviewSessionUrl, { method: 'POST' });
-    if (res.ok) {
-      return { ok: true, status: res.status };
-    }
-    return {
-      ok: false,
-      status: res.status,
-      error: `The review service rejected the close request (HTTP ${res.status}).`,
-    };
-  } catch (err) {
-    return {
-      ok: false,
-      error: `No active review session is listening. Start annotate wait and try again. Technical detail: ${String(err)}`,
-    };
-  }
+async function queueEnabled(): Promise<boolean> {
+  const stored = await chromeAPI.storage.local.get(QUEUE_ENABLED_KEY);
+  return stored[QUEUE_ENABLED_KEY] === true;
 }
 
-/**
- * Service-worker `runtime.onMessage` listener that performs the network call
- * when the injected button is clicked.
- *
- * Returns `true` to keep the message channel open for the async
- * `sendResponse`; `undefined` for a well-formed message owned by another
- * listener on the same bus.
- */
+async function reconcile(enabled: boolean): Promise<number> {
+  const rows = await annotations();
+  for (const annotation of rows) {
+    const shouldQueue = enabled && !annotation.tags.includes(ACTED);
+    const tags = annotation.tags.filter(tag => tag !== AGENT_QUEUE);
+    if (shouldQueue) {
+      tags.push(AGENT_QUEUE);
+    }
+    if (
+      tags.length !== annotation.tags.length ||
+      tags.some((tag, index) => tag !== annotation.tags[index])
+    ) {
+      await replaceTags(annotation, tags);
+    }
+  }
+  return rows.filter(annotation => enabled && !annotation.tags.includes(ACTED))
+    .length;
+}
+
+async function readQueueStatus(): Promise<QueueStatus> {
+  const enabled = await queueEnabled();
+  const queued = await reconcile(enabled);
+  return { ok: true, enabled, queued };
+}
+
+async function toggleQueue(): Promise<QueueStatus> {
+  const enabled = !(await queueEnabled());
+  await chromeAPI.storage.local.set({ [QUEUE_ENABLED_KEY]: enabled });
+  const queued = await reconcile(enabled);
+  return { ok: true, enabled, queued };
+}
+
 export function handleReviewMessage(
   message: unknown,
   sender: chrome.runtime.MessageSender,
@@ -156,58 +196,42 @@ export function handleReviewMessage(
   if (parsed === null) {
     return undefined;
   }
-  if (parsed.type === REVIEW_STATUS_MESSAGE) {
-    readSessionStatus().then(sendResponse);
-    return true;
-  }
-  closeReviewSession().then(sendResponse);
+  const operation =
+    parsed.type === REVIEW_STATUS_MESSAGE ? readQueueStatus() : toggleQueue();
+  operation.then(sendResponse, error =>
+    sendResponse({ ok: false, error: String(error) }),
+  );
   return true;
 }
 
-/** The part of `chrome.runtime.onMessage` that this module uses. */
 type MessageEvent = {
   addListener(listener: typeof handleReviewMessage): void;
 };
 
-/**
- * Register the review-session listener on a runtime message bus.
- *
- * The bus is passed in rather than reached for, so registration is itself an
- * observable boundary.
- */
 export function registerReviewMessageListener(onMessage: MessageEvent) {
   onMessage.addListener(handleReviewMessage);
 }
 
-/**
- * Inject the relay that lets the annotator toolbar reach the review service.
- *
- * Failures propagate to the caller: extension.ts reports them and puts the tab into the
- * extension's errored state, so a page whose toolbar cannot reach the review service is
- * never presented as having a working review workflow (hypothesis-review#7: no swallowed
- * errors).
- */
 export async function injectReviewButton(tabId: number) {
   await executeFunction({
     tabId,
     func: mountReviewBridge,
     args: [
       BRIDGE_READY_EVENT,
-      SEND_EVENT,
+      TOGGLE_EVENT,
       RESULT_EVENT,
       STATUS_REQUEST_EVENT,
       STATUS_EVENT,
-      REVIEW_CLOSE_MESSAGE,
+      REVIEW_TOGGLE_MESSAGE,
       REVIEW_STATUS_MESSAGE,
     ],
   });
 }
 
-/** Remove the relay from a tab, so the toolbar hides its control. Failures propagate. */
 export async function removeReviewButton(tabId: number) {
   await executeFunction({
     tabId,
     func: unmountReviewBridge,
-    args: [SEND_EVENT, STATUS_REQUEST_EVENT, BRIDGE_GONE_EVENT],
+    args: [TOGGLE_EVENT, STATUS_REQUEST_EVENT, BRIDGE_GONE_EVENT],
   });
 }

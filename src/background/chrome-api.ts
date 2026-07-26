@@ -84,6 +84,10 @@ export function getChromeAPI(chrome = globalThis.chrome) {
       sync: {
         get: chrome.storage.sync.get.bind(chrome.storage.sync),
       },
+      local: {
+        get: chrome.storage.local.get.bind(chrome.storage.local),
+        set: chrome.storage.local.set.bind(chrome.storage.local),
+      },
     },
 
     // APIs that require optional permissions.

@@ -1,4 +1,5 @@
 {
   "apiUrl": "http://127.0.0.1:5000/api",
-  "reviewSessionUrl": "http://127.0.0.1:8902/session/close"
+  "reviewGroup": "test-group",
+  "agentToken": "test-token"
 }
